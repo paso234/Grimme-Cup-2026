@@ -288,19 +288,30 @@ td { padding: 0; text-align: center; vertical-align: middle; }
 }
 
 .score-cell { position: relative; }
+
+/* Zuschauer: reines Text-Element, kein Formularfeld → kein Mobile-Fokus-Problem */
+.score-span {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 52px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem; letter-spacing: 1px;
+  color: var(--text);
+  user-select: none;
+}
+
+/* Admin: editierbares Input */
 .score-input {
   width: 100%; min-width: 70px; height: 52px;
   background: transparent; border: none;
   color: var(--text); font-size: 1rem;
   font-family: 'Bebas Neue', sans-serif;
   letter-spacing: 1px; text-align: center;
-  cursor: default; pointer-events: none;
+  cursor: text;
   -moz-appearance: textfield;
 }
 .score-input::-webkit-outer-spin-button,
 .score-input::-webkit-inner-spin-button { -webkit-appearance: none; }
 .score-input::placeholder { color: var(--border); }
-.score-input.editable { cursor: text; pointer-events: all; }
 .score-input.editable:hover:not(:focus) { background: rgba(255,255,255,0.03); }
 .score-input.editable:focus {
   background: rgba(240,165,0,0.1);
@@ -431,16 +442,17 @@ import { getDatabase, ref, onValue, set, remove } from 'firebase/database';
 // ════════════════════════════════════════════════
 //  CONFIG — Passwort und Firebase hier anpassen!
 // ════════════════════════════════════════════════
-const ADMIN_PW = "1989";   // ← Passwort ändern!
+const ADMIN_PW = "gruppenturnier2025";   // ← Passwort ändern!
 
 const firebaseConfig = {
-  apiKey: "AIzaSyArNQ7r0byoBpNmbD983FdZjIeOr8nyUKk",
-  authDomain: "grimme-cup-2026.firebaseapp.com",
-  databaseURL: "https://grimme-cup-2026-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "grimme-cup-2026",
-  storageBucket: "grimme-cup-2026.firebasestorage.app",
-  messagingSenderId: "916415275240",
-  appId: "1:916415275240:web:2df3183debf37e8d1de95d"
+  apiKey:            "AIzaSyCrcDOAYjInrfK-OCfEtihtrDgD7Q3Jb6M",
+  authDomain:        "tour-de-schumao.firebaseapp.com",
+  // ⚠️ Exakte URL aus Firebase Console → Realtime Database kopieren
+  databaseURL:       "https://tour-de-schumao-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:         "tour-de-schumao",
+  storageBucket:     "tour-de-schumao.firebasestorage.app",
+  messagingSenderId: "998177000332",
+  appId:             "1:998177000332:web:f4ad71512871068957a4a9"
 };
 // ════════════════════════════════════════════════
 
@@ -550,27 +562,32 @@ function buildTable() {
       tdP.textContent = player;
       tr.appendChild(tdP);
 
-      // Punkte je Spiel
+      // Punkte je Spiel — Admin: input / Zuschauer: span (kein Mobile-Flackern)
       KEYS.forEach(disc => {
-        const td  = document.createElement('td');
+        const td = document.createElement('td');
         td.className = 'score-cell';
-        const inp = document.createElement('input');
-        inp.type        = 'number';
-        inp.min         = '0';
-        inp.className   = 'score-input' + (isAdmin ? ' editable' : '');
-        inp.placeholder = '—';
         const v = scores[player]?.[disc];
-        inp.value    = (v !== "" && v !== undefined && v !== null) ? v : '';
-        inp.readOnly = !isAdmin;
-        inp.tabIndex = isAdmin ? 0 : -1;
-        inp.dataset.player = player;
-        inp.dataset.disc   = disc;
+        const hasVal = (v !== "" && v !== undefined && v !== null);
+
         if (isAdmin) {
+          const inp = document.createElement('input');
+          inp.type        = 'number';
+          inp.min         = '0';
+          inp.className   = 'score-input editable';
+          inp.placeholder = '—';
+          inp.value       = hasVal ? v : '';
+          inp.dataset.player = player;
+          inp.dataset.disc   = disc;
           inp.addEventListener('input',   onInput);
           inp.addEventListener('blur',    onBlur);
           inp.addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+          td.appendChild(inp);
+        } else {
+          const sp = document.createElement('span');
+          sp.className   = 'score-span';
+          sp.textContent = hasVal ? v : '—';
+          td.appendChild(sp);
         }
-        td.appendChild(inp);
         tr.appendChild(td);
       });
 
@@ -585,13 +602,7 @@ function buildTable() {
     });
   };
 
-  if (wasEmpty) {
-    render();
-  } else {
-    tbody.style.opacity = '0.35';
-    tbody.style.transition = 'opacity 0.12s';
-    setTimeout(() => { render(); tbody.style.opacity = '1'; }, 130);
-  }
+  render();
 }
 
 function getTotal(player) {
