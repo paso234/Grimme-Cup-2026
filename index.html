@@ -282,9 +282,21 @@ td { padding: 0; text-align: center; vertical-align: middle; }
 .rank-3 { color: #cd7f32 !important; }
 
 .player-cell {
-  text-align: left; padding: 14px 18px;
+  text-align: left; padding: 8px 18px;
   font-weight: 700; font-size: 0.92rem;
   white-space: nowrap; border-right: 1px solid var(--border);
+}
+.player-name { display: block; line-height: 1.2; }
+.player-total-badge {
+  display: inline-block;
+  margin-top: 3px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.05rem; letter-spacing: 1.5px;
+  color: var(--gold); opacity: 0.9;
+}
+.player-total-badge.zero {
+  color: var(--muted); font-size: 0.72rem;
+  letter-spacing: 0.5px; opacity: 0.5;
 }
 
 .score-cell { position: relative; }
@@ -442,16 +454,17 @@ import { getDatabase, ref, onValue, set, remove } from 'firebase/database';
 // ════════════════════════════════════════════════
 //  CONFIG — Passwort und Firebase hier anpassen!
 // ════════════════════════════════════════════════
-const ADMIN_PW = "1989";   // ← Passwort ändern!
+const ADMIN_PW = "gruppenturnier2025";   // ← Passwort ändern!
 
 const firebaseConfig = {
-  apiKey: "AIzaSyArNQ7r0byoBpNmbD983FdZjIeOr8nyUKk",
-  authDomain: "grimme-cup-2026.firebaseapp.com",
-  databaseURL: "https://grimme-cup-2026-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "grimme-cup-2026",
-  storageBucket: "grimme-cup-2026.firebasestorage.app",
-  messagingSenderId: "916415275240",
-  appId: "1:916415275240:web:2df3183debf37e8d1de95d"
+  apiKey:            "AIzaSyCrcDOAYjInrfK-OCfEtihtrDgD7Q3Jb6M",
+  authDomain:        "tour-de-schumao.firebaseapp.com",
+  // ⚠️ Exakte URL aus Firebase Console → Realtime Database kopieren
+  databaseURL:       "https://tour-de-schumao-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:         "tour-de-schumao",
+  storageBucket:     "tour-de-schumao.firebasestorage.app",
+  messagingSenderId: "998177000332",
+  appId:             "1:998177000332:web:f4ad71512871068957a4a9"
 };
 // ════════════════════════════════════════════════
 
@@ -541,24 +554,34 @@ function buildTable() {
   const sorted = [...PLAYERS].sort((a, b) => getTotal(b) - getTotal(a));
   const wasEmpty = tbody.children.length === 0;
 
+  // Precompute dense ranks (1,2,2,3 — kein Überspringen bei Gleichstand)
+  const totals = sorted.map(p => getTotal(p));
+  const denseRanks = totals.map((t, i) => {
+    if (i === 0) return 1;
+    // Zähle wie viele verschiedene Punktzahlen über dieser liegen
+    const distinctAbove = new Set(totals.slice(0, i).filter(v => v > t)).size;
+    return distinctAbove + 1;
+  });
+
   const render = () => {
     tbody.innerHTML = '';
     sorted.forEach((player, idx) => {
-      const rank  = idx + 1;
+      const rank  = denseRanks[idx];
       const total = getTotal(player);
       const tr    = document.createElement('tr');
       if (rank === 1 && total > 0) tr.classList.add('rank-top');
 
-      // Rang
+      // Rang — gleiche Punktzahl = gleicher Platz
       const tdR = document.createElement('td');
       tdR.className = `rank-cell rank-${rank <= 3 ? rank : ''}`;
       tdR.innerHTML = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
       tr.appendChild(tdR);
 
-      // Spielername
+      // Spielername + Gesamtpunkte direkt darunter
       const tdP = document.createElement('td');
-      tdP.className   = 'player-cell';
-      tdP.textContent = player;
+      tdP.className = 'player-cell';
+      tdP.innerHTML = `<span class="player-name">${player}</span>
+        <span class="player-total-badge${total > 0 ? '' : ' zero'}">${total > 0 ? total + ' Pkt.' : '—'}</span>`;
       tr.appendChild(tdP);
 
       // Punkte je Spiel — Admin: input / Zuschauer: span (kein Mobile-Flackern)
